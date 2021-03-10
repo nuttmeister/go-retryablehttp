@@ -322,6 +322,12 @@ type ResponseLogHook func(Logger, *http.Response)
 // response body before returning.
 type CheckRetry func(ctx context.Context, resp *http.Response, err error) (bool, error)
 
+// CheckRedirect specifies how any redirects should be handled. The default go
+// http.Client behavior is to follow 10 redirects and then return an error.
+// This can be changed by specifying your own CheckRedirect function just as
+// you can with the standard http package.
+type CheckRedirect func(*http.Request, []*http.Request) error
+
 // Backoff specifies a policy for how long to wait between retries.
 // It is called after a failing request to determine the amount of time
 // that should pass before trying again.
@@ -354,6 +360,12 @@ type Client struct {
 	// CheckRetry specifies the policy for handling retries, and is called
 	// after each request. The default policy is DefaultRetryPolicy.
 	CheckRetry CheckRetry
+
+	// CheckRedirect specifies how redirects should be checked and handled.
+	// If left nil the default golang http.Client behavior of following redirects
+	// up to 10 times and then returning an error is used. CheckRedirect is used
+	// as it is with the standard http.Client.
+	CheckRedirect CheckRedirect
 
 	// Backoff specifies the policy for how long to wait between retries
 	Backoff Backoff
@@ -550,6 +562,11 @@ func (c *Client) Do(req *Request) (*http.Response, error) {
 		case Logger:
 			v.Printf("[DEBUG] %s %s", req.Method, req.URL)
 		}
+	}
+
+	// If CheckRedirect is not nil set it on HTTPClient.
+	if c.CheckRedirect != nil {
+		c.HTTPClient.CheckRedirect = c.CheckRedirect
 	}
 
 	var resp *http.Response
