@@ -667,6 +667,7 @@ func TestClient_CheckRedirects(t *testing.T) {
 	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
+	stdClient := client.StandardClient()
 
 	tests := []int{301, 302}
 
@@ -679,14 +680,30 @@ func TestClient_CheckRedirects(t *testing.T) {
 		if resp.StatusCode != test {
 			t.Fatalf("expected status code %d but got %d", test, resp.StatusCode)
 		}
+
+		// Check with standard client as well.
+		resp, err = stdClient.Get(fmt.Sprintf("%s/%d", ts.URL, test))
+		if err != nil {
+			t.Fatalf("unexpected error testing check redirect. %s", err.Error())
+		}
+		if resp.StatusCode != test {
+			t.Fatalf("expected status code %d but got %d", test, resp.StatusCode)
+		}
 	}
 
 	// Check that we get errors when using default check redirect policy.
 	client = NewClient()
 	client.RetryMax = 0
+	stdClient = client.StandardClient()
 
 	for _, test := range tests {
 		_, err := client.Get(fmt.Sprintf("%s/%d", ts.URL, test))
+		if err == nil {
+			t.Fatalf("expected none nil error when testing default redirect behavior")
+		}
+
+		// Check with standard client as well.
+		_, err = stdClient.Get(fmt.Sprintf("%s/%d", ts.URL, test))
 		if err == nil {
 			t.Fatalf("expected none nil error when testing default redirect behavior")
 		}
