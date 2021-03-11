@@ -664,7 +664,7 @@ func TestClient_CheckRedirects(t *testing.T) {
 	defer ts.Close()
 
 	client := NewClient()
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+	client.HTTPClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
 	stdClient := client.StandardClient()
